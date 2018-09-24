@@ -298,3 +298,11 @@ ON P2.id = E1.after_id
 INNER JOIN Pokemon P3
 ON P3.id = E2.after_id
 ORDER BY E1.before_id ASC;
+
+# 31
+SELECT name
+FROM Pokemon
+WHERE id >= 10 AND id < 100
+ORDER BY name;
+
+# 32
