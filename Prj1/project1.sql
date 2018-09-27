@@ -306,3 +306,128 @@ WHERE id >= 10 AND id < 100
 ORDER BY name;
 
 # 32
+SELECT name
+FROM Pokemon
+WHERE id NOT IN (
+    SELECT pid
+    FROM CatchedPokemon
+)
+ORDER BY name;
+
+# 33
+SELECT SUM(level)
+FROM CatchedPokemon
+WHERE owner_id IN (
+    SELECT id
+    FROM Trainer
+    WHERE name = 'Matis'
+);
+
+# 34
+SELECT name
+FROM Trainer
+WHERE id IN (
+    SELECT leader_id
+    FROM Gym
+)
+ORDER BY name;
+
+# 35
+SELECT P4.type, P4.cnt / P3.cnt * 100
+FROM (
+    SELECT COUNT(type) AS cnt
+    FROM Pokemon
+) AS P3, (
+    SELECT type, cnt
+    FROM (
+        SELECT type, COUNT(type) AS cnt
+        FROM Pokemon
+        GROUP BY type
+    ) AS P1
+    WHERE P1.cnt IN (
+        SELECT MAX(cnt)
+        FROM (
+            SELECT type, COUNT(type) AS cnt
+            FROM Pokemon
+            GROUP BY type
+        ) AS P2
+    )
+) AS P4;
+
+# 36
+SELECT name
+FROM Trainer
+WHERE id IN (
+    SELECT owner_id
+    FROM CatchedPokemon
+    WHERE nickname LIKE 'A%'
+)
+ORDER BY name;
+
+# 37
+SELECT name, I.sum
+FROM Trainer AS T
+INNER JOIN (
+    SELECT owner_id, sum
+    FROM (
+        SELECT owner_id, SUM(level) AS sum
+        FROM CatchedPokemon
+        GROUP BY owner_id
+    ) AS tmp2
+    WHERE sum IN (
+        SELECT MAX(sum)
+        FROM (
+            SELECT SUM(level) AS sum
+            FROM CatchedPokemon
+            GROUP BY owner_id
+        ) AS tmp
+    )
+) AS I
+ON T.id = I.owner_id;
+
+# 38
+SELECT name
+FROM Pokemon
+WHERE id IN (
+    SELECT after_id
+    FROM Evolution
+    WHERE after_id NOT IN (
+        SELECT after_id
+        FROM Evolution
+        WHERE before_id IN (
+            SELECT after_id
+            FROM Evolution
+        )
+    )
+)
+ORDER BY name;
+
+# 39
+SELECT name
+FROM Trainer
+WHERE id IN (
+    SELECT owner_id
+    FROM CatchedPokemon
+    GROUP BY owner_id, pid
+    HAVING COUNT(*) >= 2
+)
+ORDER BY name;
+
+# 40
+SELECT T1.hometown, T1.nickname
+FROM (
+    SELECT T.hometown, level, nickname
+    FROM Trainer AS T
+    INNER JOIN CatchedPokemon AS C
+    ON T.id = C.owner_id
+) AS T1
+INNER JOIN (
+    SELECT T.hometown, MAX(level) AS max_level
+    FROM Trainer AS T
+    INNER JOIN CatchedPokemon AS C
+    ON T.id = C.owner_id
+    GROUP BY T.hometown
+) AS T2
+ON T1.hometown = T2.hometown
+AND T1.level = T2.max_level
+ORDER BY T1.hometown;
