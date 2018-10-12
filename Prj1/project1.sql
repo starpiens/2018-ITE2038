@@ -180,7 +180,8 @@ SELECT name
 FROM Pokemon
 WHERE LEFT(LOWER(name), 1) IN (
     'a', 'e', 'i', 'o', 'u'
-);
+)
+ORDER BY name;
 
 # 22
 SELECT type, COUNT(*)
