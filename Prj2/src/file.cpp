@@ -8,23 +8,26 @@ namespace disk_mgr
         class File {
         public:
             File(const char * path) {
-                fd = ::open(path, O_RDWR | O_CREAT, 644);
+                fd = ::open(path, O_RDWR | O_CREAT, 644);  
                 //
             }
 
             ~File() {}
 
             // Convert page id to matching file offset.
-            static inline off_t pid_to_off(pageid_t pid) {
+            inline off_t pid_to_off(pageid_t pid) {
                 return (off_t)pid * PAGE_SZ;   // No conversion in this version.
             }
 
             // allocate page id.
-            static inline pageid_t alloc_pageid(off_t off) {
+            inline pageid_t alloc_pageid(off_t off) {
 
             }
 
-            
+            // Free page id.
+            inline void free_pageid(pageid_t pid) {
+                ;   // Do nothing.
+            }
 
             void expand(int num_page) {
 
@@ -47,15 +50,12 @@ namespace disk_mgr
 
     static File * db_file;
 
-    // Free page id.
-    inline static void free_pageid(pageid_t pid) {
-        ;   // Do nothing.
-    }
-
+    // Open a file at path.
     int open_db(const char * path) {
         db_file = new File(path);
     }
 
+    // Close a file with file id.
     void close_db() {
         delete db_file;
     }
