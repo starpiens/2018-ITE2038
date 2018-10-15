@@ -12,7 +12,7 @@ namespace disk_mgr
         char raw[PAGE_SZ];
     } page_t;
 
-    int open_db(const char * path);
+    pageid_t open_db(const char * path);
     void close_db();
     pageid_t alloc();
     void free(pageid_t pid);

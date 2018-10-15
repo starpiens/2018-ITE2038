@@ -50,9 +50,11 @@ namespace disk_mgr
 
     static File * db_file;
 
-    // Open a file at path.
-    int open_db(const char * path) {
+    // Opens a db file and returns page id of data page.
+    // returns 0 when there is no data page.
+    pageid_t open_db(const char * path) {
         db_file = new File(path);
+        return db_file->alloc_pageid(db_file->data_off);
     }
 
     // Close a file with file id.
@@ -69,6 +71,10 @@ namespace disk_mgr
 
     // Free an on-disk page to the free page list
     void free(pageid_t pid) {
+
+    }
+
+    pageid_t change_dataoff(pageid_t pid) {
 
     }
 
