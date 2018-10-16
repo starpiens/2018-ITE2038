@@ -24,28 +24,28 @@ namespace JiDB
         IndexMgr();
         ~IndexMgr();
 
-        value_t _find  (const key_t key);
-        int     _insert(const key_t key, c_value_t value);
-        int     _delete(const key_t key);
+        virtual value_t _find  (const key_t key) = 0;
+        virtual int     _insert(const key_t key, c_value_t value) = 0;
+        virtual int     _delete(const key_t key) = 0;
     };
 
     // Disk manager class.
     class DiskMgr {
     public:
-        DiskMgr(char * filename, int page_size);
+        DiskMgr(const char * filename);
         ~DiskMgr();
 
         virtual pageid_t alloc(void);
         virtual void     free (pageid_t id);
         
-        virtual void     read (pageid_t id, page_t & dest);
-        virtual void     write(pageid_t id);
+        virtual void read (pageid_t id, page_t & dest);
+        virtual void write(pageid_t id);
     
     private:
         int fd;
     };
 
-    // 파일 하나에 대한 관리. 
+    // Manage a table.
     class Table {
     public:
         Table(const char * filename, BASE_TYPE type = BPTree);
@@ -57,7 +57,7 @@ namespace JiDB
         
     private:
         // TODO: Table info
-        // e.g.) Scheme
+        // e.g.) Schema
 
         BASE_TYPE type;
 

@@ -15,7 +15,6 @@ namespace JiDB
         int open_table(char * path, BASE_TYPE type);
         int insert(void * key, const void * value);
         
-
     private:
         std::vector<class Table *> v_table;
     };
