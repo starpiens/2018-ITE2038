@@ -37,14 +37,29 @@ namespace JiDB
         DiskMgr(const char * filename);
         ~DiskMgr();
 
-        virtual pageid_t alloc(void);
-        virtual void     free (pageid_t id);
+        // Push/Pop page at free page list.
+        pageid_t alloc(void);
+        void     free (pageid_t id);
         
-        virtual void read (pageid_t id, page_t & dest);
-        virtual void write(pageid_t id);
+        // Read/Write page on disk.
+        void read (pageid_t id, page_t & dest);
+        void write(pageid_t id, const page_t & src);
+        
+        inline pageid_t get_pageid(off_t off);
+        void get_data(page_t & dest);
     
     private:
         int fd;
+        #pragma pack(push, 1)
+        struct {
+            uint64_t free_off;
+            uint64_t data_off;
+            uint64_t num_pages;
+        } header;
+        #pragma pack(pop)
+
+        inline off_t get_offset(pageid_t id);
+        void expand(int num_pages);
     };
 
     // Manage a table.

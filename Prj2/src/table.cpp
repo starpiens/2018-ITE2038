@@ -9,12 +9,10 @@ namespace JiDB
     Table::Table(const char * filename, BASE_TYPE type = BPTree) {
         // Setup index manager.
         switch(type) {
-        case BPTree:
-            index_mgr = new BPT();
-
-        case RTree:
-        case GiST:
-        default:
+        case BPTree: index_mgr = new BPT();
+        case RTree:  index_mgr = nullptr;
+        case GiST:   index_mgr = nullptr;
+        default:     index_mgr = nullptr;
         }
 
         // Setup disk manager.
