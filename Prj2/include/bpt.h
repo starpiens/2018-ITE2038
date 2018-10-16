@@ -18,3 +18,16 @@
 //     }
 
 // };
+
+namespace JiDB
+{
+
+    class BPT : public IndexMgr {
+    public:
+        BPT();
+        ~BPT();
+
+        
+    };
+
+}
