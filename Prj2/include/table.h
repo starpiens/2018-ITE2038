@@ -1,5 +1,7 @@
 #pragma once
 
+#include <inttypes.h>
+
 namespace JiDB
 {
     const int PAGE_SZ = 0x1000;
