@@ -46,17 +46,19 @@ namespace JiDB
         void write(pageid_t id, const page_t & src);
         
         inline pageid_t get_pageid(off_t off);
-        void get_data(page_t & dest);
+        int get_data_page(page_t & dest);
     
     private:
         int fd;
-        #pragma pack(push, 1)
+        #pragma pack(push, 1)   // No align
         struct {
             uint64_t free_off;
             uint64_t data_off;
             uint64_t num_pages;
         } header;
         #pragma pack(pop)
+        int num_free_pages;
+        off_t last_free_off;
 
         inline off_t get_offset(pageid_t id);
         void expand(int num_pages);
