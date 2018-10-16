@@ -9,8 +9,8 @@ namespace JiDB
     Table::Table(const char * filename, BASE_TYPE type = BPTree) {
         switch(type) {
         case BPTree:
-            // index_mgr = new BPT();
-
+            index_mgr = new BPT<int64_t>();
+            
         case RTree:
         case GiST:
         default:
