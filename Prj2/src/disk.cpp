@@ -2,6 +2,7 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <cstring>
 
 namespace JiDB
 {
@@ -9,12 +10,10 @@ namespace JiDB
     DiskMgr::DiskMgr(const char * filename) {
         fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 644);
         if (fd < 0) {   // If file exists
-            // Read header.
-            lseek(fd, 0, SEEK_SET);
-            ::read(fd, &header, sizeof(header));
+            read_header();
+        } else {
+            
         }
-
-        
 
         // Setup helper data.
         num_free_pages = 0;
@@ -42,7 +41,7 @@ namespace JiDB
         if (num_free_pages < 3) {
             expand(50);
         }
-        //
+        off_t allocated_off = 
         num_free_pages--;
     }
 
@@ -75,11 +74,49 @@ namespace JiDB
         ::read(fd, &dest, PAGE_SZ);
     }
 
+    // off에 있는 페이지를 읽는다. 성공 여부를 반환한다.
+    int DiskMgr::read_off(off_t off, page_t & dest) {
+        if (lseek(fd, off, SEEK_SET) < 0) {
+            return -1;
+        } else if (::read(fd, &dest, PAGE_SZ) != PAGE_SZ) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+
+    // off에 있는 페이지에 쓴다. 성공 여부를 반환한다.
+    int DiskMgr::write_off(off_t off, const page_t & src) {
+        if (lseek(fd, off, SEEK_SET) < 0) {
+            return -1;
+        } else if (::write(fd, &src, PAGE_SZ) != PAGE_SZ) {
+            return -1;
+        } else if (fsync(fd) < 0) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+
+    void DiskMgr::read_header() {
+        page_t tmp;
+        read_off(0, tmp);
+        header = *reinterpret_cast<Header *>(&tmp);
+    }
+
+    void DiskMgr::write_header() {
+        page_t tmp;
+        *reinterpret_cast<Header *>(&tmp) = header;
+        write_off(0, tmp);
+    }
+
     off_t DiskMgr::get_offset(pageid_t id) {
         return (off_t)id * PAGE_SZ;
     }
 
-    void DiskMgr::expand(int num_pages) {
+    // num_pages만큼 페이지를 새로 만들고, 만들어진 페이지들을 free page list에 삽입한다.
+    // 실제로 만들어진 페이지의 수를 리턴한다.
+    int DiskMgr::expand(int num_pages) {
         
     }
 

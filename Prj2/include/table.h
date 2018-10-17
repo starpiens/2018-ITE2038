@@ -1,6 +1,7 @@
 #pragma once
 
 #include <inttypes.h>
+#include <unistd.h>
 
 namespace JiDB
 {
@@ -51,7 +52,7 @@ namespace JiDB
     private:
         int fd;
         #pragma pack(push, 1)   // No align
-        struct {
+        struct Header {
             uint64_t free_off;
             uint64_t data_off;
             uint64_t num_pages;
@@ -60,8 +61,13 @@ namespace JiDB
         int num_free_pages;
         off_t last_free_off;
 
+        inline int read_off (off_t off, page_t &dest);
+        inline int write_off(off_t off, const page_t &src);
+        inline void read_header (void);
+        inline void write_header(void);
+
         inline off_t get_offset(pageid_t id);
-        void expand(int num_pages);
+        int expand(int num_pages);
     };
 
     // Manage a table.
