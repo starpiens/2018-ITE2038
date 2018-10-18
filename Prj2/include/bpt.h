@@ -9,7 +9,7 @@ namespace JiDB
 
     class BPT : public IndexMgr {
     public:
-        BPT();
+        BPT(const char * filename);
         ~BPT();
 
         value_t _find  (const key_t key);
@@ -69,6 +69,8 @@ namespace JiDB
                 pageid_t nxt_page;
             } key_ptr_pairs[248];
         };
+
+        Node * root;
 
         Node * get_node(pageid_t id);
     };
