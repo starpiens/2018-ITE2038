@@ -14,14 +14,10 @@ namespace JiDB
         case GiST:   index_mgr = nullptr;
         default:     index_mgr = nullptr;
         }
-
-        // Setup disk manager.
-        disk_mgr = new DiskMgr(filename);
     }
 
     Table::~Table() { 
         delete index_mgr;
-        delete disk_mgr;
     }
 
     value_t Table::_find(const key_t key) {

@@ -20,17 +20,6 @@ namespace JiDB
     enum BASE_TYPE { 
         BPTree, RTree, GiST
     };
-    
-    // Index manager class.
-    class IndexMgr {
-    public:
-        IndexMgr();
-        ~IndexMgr();
-
-        virtual value_t _find  (const key_t key) = 0;
-        virtual int     _insert(const key_t key, c_value_t value) = 0;
-        virtual int     _delete(const key_t key) = 0;
-    };
 
     // Disk manager class.
     class DiskMgr {
@@ -70,6 +59,20 @@ namespace JiDB
         int expand(int num_pages);
     };
 
+    // Index manager class.
+    class IndexMgr {
+    public:
+        IndexMgr(const char * filename) { disk_mgr = new DiskMgr(filename); }
+        ~IndexMgr() { delete disk_mgr; }
+
+        virtual value_t _find  (const key_t key) = 0;
+        virtual int     _insert(const key_t key, c_value_t value) = 0;
+        virtual int     _delete(const key_t key) = 0;
+    
+    protected:
+        DiskMgr * disk_mgr;
+    };
+
     // Manage a table.
     class Table {
     public:
@@ -87,7 +90,6 @@ namespace JiDB
         BASE_TYPE type;
 
         IndexMgr * index_mgr;
-        DiskMgr  * disk_mgr;
     };
 
 }
