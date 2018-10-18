@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 #include <unistd.h>
+#include <cstring>
 
 namespace JiDB
 {
@@ -13,7 +14,11 @@ namespace JiDB
     } page_t;
 
     typedef int64_t key_t;
-    typedef struct { 
+    typedef struct _Value {
+        _Value() = default;
+        _Value(const char * val) {
+            memcpy(value, val, sizeof(value));
+        }
         char value[120]; 
     } value_t;
 
@@ -36,7 +41,7 @@ namespace JiDB
         void read (pageid_t id, page_t & dest);
         void write(pageid_t id, const page_t & src);
         
-        inline pageid_t get_pageid(off_t off);
+        pageid_t get_pageid(off_t off);
         int get_data_page(page_t & dest);
     
     private:

@@ -6,7 +6,7 @@
 namespace JiDB
 {
 
-    Table::Table(const char * filename, BASE_TYPE type = BPTree) {
+    Table::Table(const char * filename, BASE_TYPE type) {
         // Setup index manager.
         switch(type) {
         case BPTree: index_mgr = new BPT(filename);

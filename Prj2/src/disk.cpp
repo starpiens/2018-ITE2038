@@ -41,7 +41,8 @@ namespace JiDB
         if (num_free_pages < 3) {
             expand(50);
         }
-        off_t allocated_off = 
+        off_t allocated_off = 0;
+        // TODO
         num_free_pages--;
     }
 
@@ -69,20 +70,21 @@ namespace JiDB
     // If there is no data page, return -1.
     // Else return 0.
     int DiskMgr::get_data_page(page_t & dest) {
-        if (!header.data_off) return -1;
-        lseek(fd, (off_t)header.data_off, SEEK_SET);
-        ::read(fd, &dest, PAGE_SZ);
+        if ((!header.data_off) ||
+            (lseek(fd, (off_t)header.data_off, SEEK_SET) < 0) ||
+            (::read(fd, &dest, PAGE_SZ) != PAGE_SZ)) {
+            return -1;
+        }
+        return 0;
     }
 
     // off에 있는 페이지를 읽는다. 성공 여부를 반환한다.
     int DiskMgr::read_off(off_t off, page_t & dest) {
-        if (lseek(fd, off, SEEK_SET) < 0) {
+        if ((lseek(fd, off, SEEK_SET) < 0) ||
+            (::read(fd, &dest, PAGE_SZ) != PAGE_SZ)) {
             return -1;
-        } else if (::read(fd, &dest, PAGE_SZ) != PAGE_SZ) {
-            return -1;
-        } else {
-            return 0;
         }
+        return 0;
     }
 
     // off에 있는 페이지에 쓴다. 성공 여부를 반환한다.
@@ -117,7 +119,7 @@ namespace JiDB
     // num_pages만큼 페이지를 새로 만들고, 만들어진 페이지들을 free page list에 삽입한다.
     // 실제로 만들어진 페이지의 수를 리턴한다.
     int DiskMgr::expand(int num_pages) {
-        
+        // TODO
     }
 
 }

@@ -7,7 +7,7 @@ namespace JiDB
         disk_mgr = new DiskMgr(filename);
     }
 
-    BPT::~BPT() {
+    BPT::~BPT() noexcept {
         delete root;
     }
 
@@ -63,6 +63,17 @@ namespace JiDB
             if (key < mid_key) right = mid;
             else               left  = mid;
         }
+
+        //??????????????????????
+        return 0;
+    }
+
+    int BPT::_insert(const key_t key, const value_t value) {
+        return 0;
+    }
+
+    int BPT::_delete(const key_t key) {
+        return 0;
     }
 
     // id를 가지고 노드를 읽어 온다! 
