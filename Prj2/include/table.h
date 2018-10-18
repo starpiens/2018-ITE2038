@@ -12,9 +12,10 @@ namespace JiDB
         char raw[PAGE_SZ];
     } page_t;
 
-    typedef int64_t      key_t;
-    typedef char *       value_t;
-    typedef const char * c_value_t;
+    typedef int64_t key_t;
+    typedef struct { 
+        char value[120]; 
+    } value_t;
 
     // Base data structure type.
     enum BASE_TYPE { 
@@ -25,7 +26,7 @@ namespace JiDB
     class DiskMgr {
     public:
         DiskMgr(const char * filename);
-        ~DiskMgr();
+        virtual ~DiskMgr();
 
         // Push/Pop page at free page list.
         pageid_t alloc(void);
@@ -63,11 +64,11 @@ namespace JiDB
     class IndexMgr {
     public:
         IndexMgr(const char * filename) { disk_mgr = new DiskMgr(filename); }
-        ~IndexMgr() { delete disk_mgr; }
+        virtual ~IndexMgr() { delete disk_mgr; }
 
-        virtual value_t _find  (const key_t key) = 0;
-        virtual int     _insert(const key_t key, c_value_t value) = 0;
-        virtual int     _delete(const key_t key) = 0;
+        virtual value_t * _find  (const key_t key) = 0;
+        virtual int       _insert(const key_t key, const value_t value) = 0;
+        virtual int       _delete(const key_t key) = 0;
     
     protected:
         DiskMgr * disk_mgr;
@@ -77,11 +78,11 @@ namespace JiDB
     class Table {
     public:
         Table(const char * filename, BASE_TYPE type = BPTree);
-        ~Table();
+        virtual ~Table();
 
-        value_t _find  (const key_t key);
-        int     _insert(const key_t key, c_value_t value);
-        int     _delete(const key_t key);
+        value_t * _find  (const key_t key);
+        int       _insert(const key_t key, const value_t value);
+        int       _delete(const key_t key);
         
     private:
         // TODO: Table info

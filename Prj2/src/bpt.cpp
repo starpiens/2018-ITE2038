@@ -4,17 +4,69 @@ namespace JiDB
 {
 
     BPT::BPT(const char * filename) : IndexMgr(filename) {
-        
+        disk_mgr = new DiskMgr(filename);
     }
 
     BPT::~BPT() {
         delete root;
     }
 
-    value_t BPT::_find(const key_t key) {
-        
+    value_t * BPT::_find(const key_t key) {
+        if (!root) return nullptr;
+        Node * ptr_node = root;
+        while (!ptr_node->is_leaf) {
+            Internal & internal = *static_cast<Internal *>(ptr_node);
+            pageid_t nxt_page = find_child(internal, key);
+            if (ptr_node != root) delete ptr_node;
+            ptr_node = get_node(nxt_page);
+        }
+
+        Leaf & leaf = *static_cast<Leaf *>(ptr_node);
+        int idx = find_in_leaf(leaf, key);
+        value_t * ret = nullptr;
+        if (idx >= 0) {
+            ret = new value_t;
+            memcpy(ret, &leaf.records[idx].value, sizeof(value_t));
+        }
+        delete ptr_node;
+        return ret;
     }
 
+    pageid_t BPT::find_child(const Internal & page, const key_t key) {
+        int idx = find_lower_bound_in_internal(page, key);
+        return (idx < 0) ? page.leftmost_page : page.key_ptr_pairs[idx].nxt_page;
+    }
+
+    /* Find index of key in leaf_page.
+    * If found, return index of the key. Otherwise, return -1.
+    */
+    int BPT::find_in_leaf(const Leaf & page, const key_t key) {
+        // [left, right)
+        int left = 0, right = page.num_of_keys;
+        while (left < right) {
+            int mid = (left + right) >> 1;
+            key_t mid_key = page.records[mid].key;
+            if (key == mid_key) return mid;
+            if (key < mid_key) right = mid - 1;
+            else               left  = mid + 1;
+        }
+        return -1;
+    }
+
+    int BPT::find_lower_bound_in_internal(const Internal & page, const key_t key) {
+        // [left, right)
+        int left = 0, right = page.num_of_keys;
+        while (left < right) {
+            int mid = (left + right) >> 1;
+            key_t mid_key = page.key_ptr_pairs[mid].key;
+            if (key == mid_key) return mid;
+            if (key < mid_key) right = mid;
+            else               left  = mid;
+        }
+    }
+
+    // id를 가지고 노드를 읽어 온다! 
+    // 리턴값은 Leaf 또는 Internal 객체다.
     BPT::Node * BPT::get_node(pageid_t id) {
         // Read page from disk manager.
         page_t page;
@@ -54,7 +106,5 @@ namespace JiDB
             return static_cast<Node *>(internal_node);
         }
     }
-
-    
 
 }
