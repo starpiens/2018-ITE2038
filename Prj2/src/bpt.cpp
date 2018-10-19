@@ -2,6 +2,26 @@
 
 namespace JiDB 
 {
+    BPT::RAW_BPT_Page::RAW_BPT_Page(const DiskMgr & disk_mgr, const Node & node) {
+        parent      = (uint64_t)disk_mgr.get_offset(node.parent);
+        is_leaf     = node.is_leaf;
+        num_of_keys = node.num_of_keys;
+    }
+
+    BPT::RAW_Leaf_Page::RAW_Leaf_Page(const DiskMgr & disk_mgr, const Leaf & leaf) :
+            RAW_BPT_Page(disk_mgr, *static_cast<const Node *>(&leaf)) {
+        right_sibling = (uint64_t)disk_mgr.get_offset(leaf.right_sibling);
+        memcpy(records, leaf.records, sizeof(records));
+    }
+
+    BPT::RAW_Internal_Page::RAW_Internal_Page(const DiskMgr & disk_mgr, const Internal & internal) :
+            RAW_BPT_Page(disk_mgr, *static_cast<const Node*>(&internal)) {
+        leftmost_page = (off_t)disk_mgr.get_offset(internal.leftmost_page);
+        for (int i = 0; i < 248; i++) {
+            key_off_pairs[i].key      = internal.key_ptr_pairs[i].key;
+            key_off_pairs[i].nxt_page = disk_mgr.get_offset(internal.key_ptr_pairs[i].nxt_page);
+        }
+    }
 
     BPT::Node::Node(const DiskMgr & disk_mgr, const page_t & page) {
         const RAW_BPT_Page & raw_page = *reinterpret_cast<const RAW_BPT_Page *>(&page);
@@ -21,9 +41,18 @@ namespace JiDB
         leftmost_page = disk_mgr.get_pageid((off_t)raw_internal.leftmost_page);
         for (int i = 0; i < 248; i++) {
             key_ptr_pairs[i].key      = raw_internal.key_off_pairs[i].key;
-            key_ptr_pairs[i].nxt_page 
-                = disk_mgr.get_pageid(raw_internal.key_off_pairs[i].nxt_page);
+            key_ptr_pairs[i].nxt_page = disk_mgr.get_pageid(raw_internal.key_off_pairs[i].nxt_page);
         }
+    }
+
+    void BPT::Leaf::write(const DiskMgr & disk_mgr, pageid_t id) {
+        RAW_Leaf_Page raw_leaf(disk_mgr, *this);
+        disk_mgr.write(id, *reinterpret_cast<page_t *>(&raw_leaf));
+    }
+
+    void BPT::Internal::write(const DiskMgr & disk_mgr, pageid_t id) {
+        RAW_Internal_Page raw_internal(disk_mgr, *this);
+        disk_mgr.write(id, *reinterpret_cast<page_t *>(&raw_internal));
     }
 
     value_t * BPT::_find(const key_t key) {
@@ -115,7 +144,7 @@ namespace JiDB
     }
 
     // id를 가지고 노드를 읽어 온다! 
-    // 리턴값은 Leaf 또는 Internal 객체다.
+    // 리턴값은 Leaf 또는 Internal 객체다. is_leaf를 확인하여 적절히 캐스팅하여 사용해야 한다.
     BPT::Node * BPT::get_node(pageid_t id) const {
         // Read page from disk manager.
         page_t page;
@@ -125,11 +154,6 @@ namespace JiDB
                       (static_cast<Node *>(new Leaf(*disk_mgr, page))) :
                       (static_cast<Node *>(new Internal(*disk_mgr, page)));
         return node;
-    }
-
-    void BPT::free_node(Node & node) {
-
-        delete &node;
     }
 
 }

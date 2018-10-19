@@ -112,7 +112,7 @@ namespace JiDB
         write_off(0, tmp);
     }
 
-    off_t DiskMgr::get_offset(pageid_t id) {
+    off_t DiskMgr::get_offset(pageid_t id) const {
         return (off_t)id * PAGE_SZ;
     }
 

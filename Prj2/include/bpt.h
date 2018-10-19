@@ -18,6 +18,8 @@ namespace JiDB
         
     private: 
         struct Node;
+        struct Leaf;
+        struct Internal;
 
         struct Record {
             Record() = default;
@@ -38,7 +40,7 @@ namespace JiDB
         };
 
         struct RAW_BPT_Page {
-            RAW_BPT_Page(const Node & node);
+            RAW_BPT_Page(const DiskMgr & disk_mgr, const Node & node);
 
             uint64_t parent;
             int      is_leaf;
@@ -49,6 +51,8 @@ namespace JiDB
         };
     
         struct RAW_Leaf_Page : public RAW_BPT_Page {
+            RAW_Leaf_Page(const DiskMgr & disk_mgr, const Leaf & leaf);
+
             uint64_t right_sibling;
             struct RAW_Record {
                 int64_t key;
@@ -57,6 +61,8 @@ namespace JiDB
         };
 
         struct RAW_Internal_Page : public RAW_BPT_Page {
+            RAW_Internal_Page(const DiskMgr & disk_mgr, const Internal & internal);
+
             int64_t leftmost_page;
             struct KeyOffPair {
                 key_t    key;
@@ -73,11 +79,14 @@ namespace JiDB
         
         protected:
             Node(const DiskMgr & disk_mgr, const page_t & page);
+            pageid_t id;
         };
 
         struct Leaf : public Node {
             Leaf(const DiskMgr & disk_mgr, const page_t & page);
             ~Leaf() = default;
+
+            void write(const DiskMgr & disk_mgr, pageid_t id);
 
             pageid_t right_sibling;
             Record   records[31];
@@ -86,6 +95,8 @@ namespace JiDB
         struct Internal : public Node {
             Internal(const DiskMgr & disk_mgr, const page_t & page);
             ~Internal() = default;
+
+            void write(const DiskMgr & disk_mgr, pageid_t id);
 
             pageid_t leftmost_page;
             KeyPtr key_ptr_pairs[248];
