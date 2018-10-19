@@ -9,14 +9,16 @@ namespace JiDB
 
     class BPT : public IndexMgr {
     public:
-        BPT(const char * filename);
-        ~BPT() noexcept;
+        BPT(const char * filename) : IndexMgr(filename) {}
+        ~BPT() noexcept { delete root; }
 
         value_t * _find  (const key_t key);
         int       _insert(const key_t key, const value_t value);
         int       _delete(const key_t key);
         
     private: 
+        struct Node;
+
         struct Record {
             Record() = default;
             Record(key_t key, value_t value) 
@@ -36,7 +38,7 @@ namespace JiDB
         };
 
         struct RAW_BPT_Page {
-            virtual ~RAW_BPT_Page() = default;
+            RAW_BPT_Page(const Node & node);
 
             uint64_t parent;
             int      is_leaf;
@@ -44,48 +46,37 @@ namespace JiDB
         
         private:
             char __reserved[104];
-
-            RAW_BPT_Page() = default;
         };
     
         struct RAW_Leaf_Page : public RAW_BPT_Page {
-            ~RAW_Leaf_Page() = default;
-
             uint64_t right_sibling;
             struct RAW_Record {
                 int64_t key;
                 value_t value;
             } records[31];
-
-        private:
-            RAW_Leaf_Page() = default;
         };
 
         struct RAW_Internal_Page : public RAW_BPT_Page {
-            ~RAW_Internal_Page() = default;
-
             int64_t leftmost_page;
             struct KeyOffPair {
                 key_t    key;
                 uint64_t nxt_page;
             } key_off_pairs[248];
-
-        private:
-            RAW_Internal_Page() = default;
         };
 
         struct Node {
-        public:
-            Node() = default;
-            virtual ~Node() = default;
+            virtual ~Node() = 0;
 
             pageid_t parent;
             int      is_leaf;
             int      num_of_keys;
+        
+        protected:
+            Node(const DiskMgr & disk_mgr, const page_t & page);
         };
 
         struct Leaf : public Node {
-            Leaf() = default;
+            Leaf(const DiskMgr & disk_mgr, const page_t & page);
             ~Leaf() = default;
 
             pageid_t right_sibling;
@@ -93,7 +84,7 @@ namespace JiDB
         };
 
         struct Internal : public Node {
-            Internal() = default;
+            Internal(const DiskMgr & disk_mgr, const page_t & page);
             ~Internal() = default;
 
             pageid_t leftmost_page;
@@ -102,13 +93,15 @@ namespace JiDB
 
         Node * root;
 
-        Node * get_node(pageid_t id);
+        Node * get_node(pageid_t id) const;
+        void free_node(Node & node);
 
         pageid_t find_child(const Internal & page, const key_t key);
         int find_in_leaf(const Leaf & page, const key_t key);
         int find_lower_bound_in_internal(const Internal & page, const key_t key);
 
-        Record insert_into_internal();
+        KeyPtr * insert_into_internal(Internal & page, const key_t key, const value_t value);
+        KeyPtr * insert_into_leaf(Leaf & page, const key_t key, const value_t value);
     };
 
 }

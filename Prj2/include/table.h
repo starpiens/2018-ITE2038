@@ -41,7 +41,9 @@ namespace JiDB
         void read (pageid_t id, page_t & dest);
         void write(pageid_t id, const page_t & src);
         
-        pageid_t get_pageid(off_t off);
+        pageid_t get_pageid(off_t off) const;
+        off_t    get_offset(pageid_t id);
+        
         int get_data_page(page_t & dest);
     
     private:
@@ -61,7 +63,6 @@ namespace JiDB
         inline void read_header (void);
         inline void write_header(void);
 
-        inline off_t get_offset(pageid_t id);
         int expand(int num_pages);
     };
 

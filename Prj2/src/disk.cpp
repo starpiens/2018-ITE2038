@@ -63,7 +63,7 @@ namespace JiDB
         fsync(fd);
     }
 
-    pageid_t DiskMgr::get_pageid(off_t off) {
+    pageid_t DiskMgr::get_pageid(off_t off) const {
         return (pageid_t)off / PAGE_SZ;
     }
 
