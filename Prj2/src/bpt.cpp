@@ -1,7 +1,10 @@
+#include "table.h"
 #include "bpt.h"
 
-namespace JiDB 
-{
+using namespace JiDB;
+
+namespace JiDB {
+
     BPT::RAW_BPT_Page::RAW_BPT_Page(const DiskMgr & disk_mgr, const Node & node) {
         parent      = (uint64_t)disk_mgr.get_offset(node.parent);
         is_leaf     = node.is_leaf;
@@ -23,20 +26,21 @@ namespace JiDB
         }
     }
 
-    BPT::Node::Node(const DiskMgr & disk_mgr, const page_t & page) {
+    // 이미 있는 page를 Node 형태로 표현한 객체를 생성한다.
+    BPT::Node::Node(const DiskMgr & disk_mgr, const page_t & page, pageid_t id) : id(id) {
         const RAW_BPT_Page & raw_page = *reinterpret_cast<const RAW_BPT_Page *>(&page);
         parent      = disk_mgr.get_pageid((off_t)raw_page.parent);
         is_leaf     = raw_page.is_leaf;
         num_of_keys = raw_page.num_of_keys;
     }
 
-    BPT::Leaf::Leaf(const DiskMgr & disk_mgr, const page_t & page) : Node(disk_mgr, page) {
+    BPT::Leaf::Leaf(const DiskMgr & disk_mgr, const page_t & page, pageid_t id) : Node(disk_mgr, page, id) {
         const RAW_Leaf_Page & raw_leaf = *reinterpret_cast<const RAW_Leaf_Page *>(&page);
         right_sibling = disk_mgr.get_pageid((off_t)raw_leaf.right_sibling);
         memcpy(records, raw_leaf.records, sizeof(records));
     }
 
-    BPT::Internal::Internal(const DiskMgr & disk_mgr, const page_t & page) : Node(disk_mgr, page) {
+    BPT::Internal::Internal(const DiskMgr & disk_mgr, const page_t & page, pageid_t id) : Node(disk_mgr, page, id) {
         const RAW_Internal_Page & raw_internal = *reinterpret_cast<const RAW_Internal_Page *>(&page);
         leftmost_page = disk_mgr.get_pageid((off_t)raw_internal.leftmost_page);
         for (int i = 0; i < 248; i++) {
@@ -111,9 +115,13 @@ namespace JiDB
     }
 
     int BPT::_insert(const key_t key, const value_t value) {
-        if (!root->is_leaf) {
-            Internal & root_internal = *static_cast<Internal *>(root);
-            KeyPtr * new_key = insert_into_internal(root_internal, key, value);
+        KeyPtr * key_ptr_from_root = root->is_leaf ?
+            insert_into_leaf(*static_cast<Leaf *>(root), key, value) :
+            insert_into_internal(*static_cast<Internal *>(root), key, value);
+
+        // Split happened at root.
+        if (key_ptr_from_root) {
+            
         }
         return 0;
     }
@@ -125,10 +133,12 @@ namespace JiDB
     BPT::KeyPtr * BPT::insert_into_internal(Internal & page, const key_t key, const value_t value) {
         pageid_t child_id = find_child(page, key);
         Node * child = get_node(child_id);
-        KeyPtr * to_insert;
-        if (child->is_leaf) {
-            to_insert = insert_into_leaf(*static_cast<Leaf *>(child), key, value);
-
+        KeyPtr * key_ptr_from_child = child->is_leaf ?
+            insert_into_leaf(*static_cast<Leaf *>(child), key, value) :
+            insert_into_internal(*static_cast<Internal *>(child), key, value);
+        
+        if (key_ptr_from_child) {
+            if (page.num_of_keys)
         }
 
         delete child;
@@ -151,8 +161,8 @@ namespace JiDB
         disk_mgr->read(id, page);
         RAW_BPT_Page & header = *reinterpret_cast<RAW_BPT_Page *>(&page);
         Node * node = header.is_leaf ? 
-                      (static_cast<Node *>(new Leaf(*disk_mgr, page))) :
-                      (static_cast<Node *>(new Internal(*disk_mgr, page)));
+                      (static_cast<Node *>(new Leaf(*disk_mgr, page, id))) :
+                      (static_cast<Node *>(new Internal(*disk_mgr, page, id)));
         return node;
     }
 

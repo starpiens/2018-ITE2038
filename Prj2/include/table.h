@@ -8,19 +8,20 @@ namespace JiDB
 {
     const int PAGE_SZ = 0x1000;
     
-    typedef uint64_t pageid_t;
-    typedef struct {
+    using pageid_t = uint64_t;
+    using page_t   = struct {
         char raw[PAGE_SZ];
-    } page_t;
+    };
 
-    typedef int64_t key_t;
-    typedef struct _Value {
+    using key_t   = int64_t;
+    using value_t = struct _Value {
         _Value() = default;
         _Value(const char * val) {
             memcpy(value, val, sizeof(value));
         }
+    private:
         char value[120]; 
-    } value_t;
+    };
 
     // Base data structure type.
     enum BASE_TYPE { 
@@ -34,7 +35,7 @@ namespace JiDB
         virtual ~DiskMgr();
 
         // Push/Pop page at free page list.
-        pageid_t alloc(void);
+        page_t * alloc(void);
         void     free (pageid_t id);
         
         // Read/Write page on disk.
@@ -62,8 +63,9 @@ namespace JiDB
         inline int write_off(off_t off, const page_t &src);
         inline void read_header (void);
         inline void write_header(void);
+        inline void setup_helper_data(void);
 
-        int expand(int num_pages);
+        inline int expand(int num_pages);
     };
 
     // Index manager class.

@@ -17,9 +17,14 @@ namespace JiDB
         int       _delete(const key_t key);
         
     private: 
+        static const int ORDER_INTERNAL = 248;
+        static const int ORDER_LEAF     = 31;
+
         struct Node;
         struct Leaf;
         struct Internal;
+
+        #pragma pack(push, 1)   // no align
 
         struct Record {
             Record() = default;
@@ -57,7 +62,7 @@ namespace JiDB
             struct RAW_Record {
                 int64_t key;
                 value_t value;
-            } records[31];
+            } records[ORDER_LEAF];
         };
 
         struct RAW_Internal_Page : public RAW_BPT_Page {
@@ -67,7 +72,7 @@ namespace JiDB
             struct KeyOffPair {
                 key_t    key;
                 uint64_t nxt_page;
-            } key_off_pairs[248];
+            } key_off_pairs[ORDER_INTERNAL];
         };
 
         struct Node {
@@ -78,34 +83,38 @@ namespace JiDB
             int      num_of_keys;
         
         protected:
-            Node(const DiskMgr & disk_mgr, const page_t & page);
+            Node(const DiskMgr & disk_mgr, const page_t & page, pageid_t id);
             pageid_t id;
         };
 
         struct Leaf : public Node {
-            Leaf(const DiskMgr & disk_mgr, const page_t & page);
+            Leaf(const DiskMgr & disk_mgr, const page_t & page, pageid_t id);
             ~Leaf() = default;
 
             void write(const DiskMgr & disk_mgr, pageid_t id);
 
             pageid_t right_sibling;
-            Record   records[31];
+            Record   records[ORDER_LEAF];
         };
 
         struct Internal : public Node {
-            Internal(const DiskMgr & disk_mgr, const page_t & page);
+            Internal(const DiskMgr & disk_mgr, const page_t & page, pageid_t id);
             ~Internal() = default;
 
             void write(const DiskMgr & disk_mgr, pageid_t id);
 
             pageid_t leftmost_page;
-            KeyPtr key_ptr_pairs[248];
+            KeyPtr key_ptr_pairs[ORDER_INTERNAL];
         };
+
+        #pragma pack(pop)
 
         Node * root;
 
         Node * get_node(pageid_t id) const;
         void free_node(Node & node);
+        Leaf * alloc_leaf();
+        Internal * alloc_internal();
 
         pageid_t find_child(const Internal & page, const key_t key);
         int find_in_leaf(const Leaf & page, const key_t key);
