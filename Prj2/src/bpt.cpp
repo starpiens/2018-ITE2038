@@ -5,6 +5,24 @@ using namespace JiDB;
 
 namespace JiDB {
 
+    /******************************************/
+    /************ HELPER FUNCTIONS ************/
+    /******************************************/
+
+    // id를 가지고 노드를 읽어 온다! 
+    // 리턴값은 Leaf 또는 Internal 객체다. is_leaf를 확인하여 적절히 캐스팅하여 사용해야 한다.
+    BPT::Node * BPT::get_node(pageid_t id) const {
+        // Read page from disk manager.
+        page_t page;
+        disk_mgr->read(id, page);
+        RAW_BPT_Page & header = *reinterpret_cast<RAW_BPT_Page *>(&page);
+        Node * node = header.is_leaf ? 
+                      (static_cast<Node *>(new Leaf(*disk_mgr, page, id))) :
+                      (static_cast<Node *>(new Internal(*disk_mgr, page, id)));
+        return node;
+    }
+
+    // Node를 RAW_BPT_Page 형태로 표현한 객체를 생성한다.
     BPT::RAW_BPT_Page::RAW_BPT_Page(const DiskMgr & disk_mgr, const Node & node) {
         parent      = (uint64_t)disk_mgr.get_offset(node.parent);
         is_leaf     = node.is_leaf;
@@ -49,6 +67,7 @@ namespace JiDB {
         }
     }
 
+    // Write this page to disk.
     void BPT::Leaf::write(const DiskMgr & disk_mgr, pageid_t id) {
         RAW_Leaf_Page raw_leaf(disk_mgr, *this);
         disk_mgr.write(*reinterpret_cast<page_t *>(&raw_leaf));
@@ -59,9 +78,18 @@ namespace JiDB {
         disk_mgr.write(*reinterpret_cast<page_t *>(&raw_internal));
     }
 
-    value_t * BPT::_find(const key_t key) {
+
+
+    /******************************************/
+    /************ B+ TREE FUNCTIONS ***********/
+    /******************************************/
+    
+    // Find value by key.
+    value_t * BPT::_find(const key_t & key) {
         if (!root) return nullptr;
         Node * ptr_node = root;
+
+        // Find leaf node.
         while (!ptr_node->is_leaf) {
             Internal & internal = *static_cast<Internal *>(ptr_node);
             pageid_t nxt_page = find_child(internal, key);
@@ -77,9 +105,11 @@ namespace JiDB {
             memcpy(ret, &leaf.records[idx].value, sizeof(value_t));
         }
         delete ptr_node;
+
         return ret;
     }
 
+    // Find child which may contain key in internal node.
     pageid_t BPT::find_child(const Internal & page, const key_t key) {
         int idx = find_lower_bound_in_internal(page, key);
         return (idx < 0) ? page.leftmost_page : page.key_ptr_pairs[idx].nxt_page;
@@ -114,14 +144,14 @@ namespace JiDB {
         return left;
     }
 
-    int BPT::_insert(const key_t key, const value_t value) {
+    int BPT::_insert(const key_t & key, const value_t & value) {
         KeyPtr * key_ptr_from_root = root->is_leaf ?
             insert_into_leaf(*static_cast<Leaf *>(root), key, value) :
             insert_into_internal(*static_cast<Internal *>(root), key, value);
 
         // Split happened at root.
         if (key_ptr_from_root) {
-            
+            // TODO: Split root.
         }
         return 0;
     }
@@ -130,40 +160,34 @@ namespace JiDB {
      * If split occurs, return a KeyPtr which need to be inserted in parent node.
      * Otherwise return nullptr.
      */
-    BPT::KeyPtr * BPT::insert_into_internal(Internal & page, const key_t key, const value_t value) {
+    BPT::KeyPtr * BPT::insert_into_internal(Internal & page, const key_t & key, const value_t & value) {
         pageid_t child_id = find_child(page, key);
         Node * child = get_node(child_id);
         KeyPtr * key_ptr_from_child = child->is_leaf ?
             insert_into_leaf(*static_cast<Leaf *>(child), key, value) :
             insert_into_internal(*static_cast<Internal *>(child), key, value);
         
+        // Split occured in child.
         if (key_ptr_from_child) {
-            if (page.num_of_keys)
-        }
+
+            if (page.num_of_keys == ORDER_INTERNAL) {
+                int ret = find_lower_bound_in_internal(page, key);
+                
+            } else {
+
+            }
+        } else ; // no split, do nothing.
 
         delete child;
-        // return something;
+        return nullptr;
     }
 
     BPT::KeyPtr * BPT::insert_into_leaf(Leaf & leaf, const key_t key, const value_t value) {
 
     }
 
-    int BPT::_delete(const key_t key) {
+    int BPT::_delete(const key_t & key) {
         return 0;
-    }
-
-    // id를 가지고 노드를 읽어 온다! 
-    // 리턴값은 Leaf 또는 Internal 객체다. is_leaf를 확인하여 적절히 캐스팅하여 사용해야 한다.
-    BPT::Node * BPT::get_node(pageid_t id) const {
-        // Read page from disk manager.
-        page_t page;
-        disk_mgr->read(id, page);
-        RAW_BPT_Page & header = *reinterpret_cast<RAW_BPT_Page *>(&page);
-        Node * node = header.is_leaf ? 
-                      (static_cast<Node *>(new Leaf(*disk_mgr, page, id))) :
-                      (static_cast<Node *>(new Internal(*disk_mgr, page, id)));
-        return node;
     }
 
 }

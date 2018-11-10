@@ -110,6 +110,7 @@ namespace JiDB
         int expanded_sz = ret - header->num_pages * PAGE_SZ;
         int expanded_pg =  expanded_sz / PAGE_SZ;
         header->num_pages += expanded_pg;
+        msync(header, sizeof(HeaderPage), MS_SYNC);
         return expanded_pg;
     }
 

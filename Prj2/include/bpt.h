@@ -12,9 +12,9 @@ namespace JiDB
         BPT(const char * filename) : IndexMgr(filename) {}
         ~BPT() noexcept { delete root; }
 
-        value_t * _find  (const key_t key);
-        int       _insert(const key_t key, const value_t value);
-        int       _delete(const key_t key);
+        value_t * _find  (const key_t & key);
+        int       _insert(const key_t & key, const value_t & value);
+        int       _delete(const key_t & key);
         
     private: 
         static const int ORDER_INTERNAL = 248;
@@ -120,8 +120,8 @@ namespace JiDB
         int find_in_leaf(const Leaf & page, const key_t key);
         int find_lower_bound_in_internal(const Internal & page, const key_t key);
 
-        KeyPtr * insert_into_internal(Internal & page, const key_t key, const value_t value);
-        KeyPtr * insert_into_leaf(Leaf & page, const key_t key, const value_t value);
+        KeyPtr * insert_into_internal(Internal & page, const key_t & key, const value_t & value);
+        KeyPtr * insert_into_leaf(Leaf & page, const key_t & key, const value_t & value);
     };
 
 }
