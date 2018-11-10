@@ -51,12 +51,12 @@ namespace JiDB {
 
     void BPT::Leaf::write(const DiskMgr & disk_mgr, pageid_t id) {
         RAW_Leaf_Page raw_leaf(disk_mgr, *this);
-        disk_mgr.write(id, *reinterpret_cast<page_t *>(&raw_leaf));
+        disk_mgr.write(*reinterpret_cast<page_t *>(&raw_leaf));
     }
 
     void BPT::Internal::write(const DiskMgr & disk_mgr, pageid_t id) {
         RAW_Internal_Page raw_internal(disk_mgr, *this);
-        disk_mgr.write(id, *reinterpret_cast<page_t *>(&raw_internal));
+        disk_mgr.write(*reinterpret_cast<page_t *>(&raw_internal));
     }
 
     value_t * BPT::_find(const key_t key) {

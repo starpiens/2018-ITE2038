@@ -10,8 +10,6 @@ namespace JiDB
     
     using pageid_t = uint64_t;
     using page_t   = struct {
-        void free(void);
-
         char     raw[PAGE_SZ];
         pageid_t id;
     };
@@ -39,7 +37,7 @@ namespace JiDB
 
         // Push/Pop page at free page list.
         page_t & alloc(void);
-        void     free (pageid_t id);
+        void     free (page_t page);
         
         // Read/Write page on disk.
         void read (pageid_t id, page_t & dest);
@@ -59,9 +57,9 @@ namespace JiDB
             uint64_t free_off;
             uint64_t data_off;
             uint64_t num_pages;
-        } header;
+        } * header;
 
-        // Free
+        // Free page
         struct FreePage {
             uint64_t next_off;
         };
@@ -69,12 +67,9 @@ namespace JiDB
 
         // Helper data.
         int num_free_pages;
-        off_t last_free_off;
 
         inline int read_off (off_t off, page_t &dest);
         inline int write_off(off_t off, const page_t &src);
-        inline void read_header (void);
-        inline void write_header(void);
         inline void setup_helper_data(void);
 
         inline int expand(int num_pages);
