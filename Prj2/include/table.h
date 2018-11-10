@@ -36,12 +36,12 @@ namespace JiDB
         virtual ~DiskMgr();
 
         // Push/Pop page at free page list.
-        page_t & alloc(void);
+        page_t * alloc(void);
         void     free (page_t page);
         
         // Read/Write page on disk.
-        void read (pageid_t id, page_t & dest);
-        void write(pageid_t id, const page_t & src) const;
+        int read (pageid_t id, page_t & dest);
+        int write(const page_t & src) const;
         
         pageid_t get_pageid(off_t off) const;
         off_t    get_offset(pageid_t id) const;
@@ -64,13 +64,6 @@ namespace JiDB
             uint64_t next_off;
         };
         #pragma pack(pop)
-
-        // Helper data.
-        int num_free_pages;
-
-        inline int read_off (off_t off, page_t &dest);
-        inline int write_off(off_t off, const page_t &src);
-        inline void setup_helper_data(void);
 
         inline int expand(int num_pages);
     };
