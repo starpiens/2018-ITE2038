@@ -10,7 +10,10 @@ namespace JiDB
     
     using pageid_t = uint64_t;
     using page_t   = struct {
-        char raw[PAGE_SZ];
+        void free(void);
+
+        char     raw[PAGE_SZ];
+        pageid_t id;
     };
 
     using key_t   = int64_t;
@@ -35,7 +38,7 @@ namespace JiDB
         virtual ~DiskMgr();
 
         // Push/Pop page at free page list.
-        page_t * alloc(void);
+        page_t & alloc(void);
         void     free (pageid_t id);
         
         // Read/Write page on disk.
@@ -49,13 +52,22 @@ namespace JiDB
     
     private:
         int fd;
-        #pragma pack(push, 1)   // No align
-        struct Header {
+
+        #pragma pack(push, 1)
+        // Header page
+        struct HeaderPage {
             uint64_t free_off;
             uint64_t data_off;
             uint64_t num_pages;
         } header;
+
+        // Free
+        struct FreePage {
+            uint64_t next_off;
+        };
         #pragma pack(pop)
+
+        // Helper data.
         int num_free_pages;
         off_t last_free_off;
 

@@ -10,7 +10,7 @@ namespace JiDB
     DiskMgr::DiskMgr(const char * filename) {
         fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 644);
 
-        if (fd >= 0) {  // Load header and setup helper info.
+        if (fd >= 0) {  // Load header and setup helper data.
             read_header();
             setup_helper_data();
 
@@ -21,34 +21,44 @@ namespace JiDB
     }
 
     DiskMgr::~DiskMgr() {
-        lseek(fd, 0, SEEK_SET);
-        ::write(fd, &header, sizeof(header));
+        write_header();
         close(fd);
     }
 
-    pageid_t DiskMgr::alloc() {
-        if (num_free_pages < 3) {
+    page_t & DiskMgr::alloc() {
+        if(num_free_pages < 5) {
             expand(50);
         }
-        off_t allocated_off = 0;
-        // TODO
+
+        page_t &   new_page = *new page_t;
+        FreePage & free_new_page = *reinterpret_cast<FreePage *>(&new_page);
+        read_off(header.free_off, new_page);
+        header.free_off = free_new_page.next_off;
+        write_header();
         num_free_pages--;
+        
+        return new_page;
     }
 
-    void DiskMgr::free(pageid_t id) {
-
+    // Make this page free page.
+    void DiskMgr::free(page_t page) {
+        FreePage & free_page = *reinterpret_cast<FreePage *>(&page);
+        free_page.next_off = header.free_off;
+        header.free_off = get_offset(page.id);
+        write_header();
+        num_free_pages++;
     }
 
     void DiskMgr::read(pageid_t id, page_t & dest) {
         off_t off = get_offset(id);
         lseek(fd, off, SEEK_SET);
-        ::read(fd, &dest, PAGE_SZ);
+        ::read(fd, &dest.raw, sizeof(dest.raw));
     }
 
     void DiskMgr::write(pageid_t id, const page_t & src) const {
         off_t off = get_offset(id);
         lseek(fd, off, SEEK_SET);
-        ::write(fd, &src, PAGE_SZ);
+        ::write(fd, &src.raw, sizeof(src.raw));
         fsync(fd);
     }
 
@@ -89,12 +99,12 @@ namespace JiDB
     inline void DiskMgr::read_header() {
         page_t tmp;
         read_off(0, tmp);
-        header = *reinterpret_cast<Header *>(&tmp);
+        header = *reinterpret_cast<HeaderPage *>(&tmp);
     }
 
     inline void DiskMgr::write_header() {
         page_t tmp;
-        *reinterpret_cast<Header *>(&tmp) = header;
+        *reinterpret_cast<HeaderPage *>(&tmp) = header;
         write_off(0, tmp);
     }
 
@@ -119,7 +129,13 @@ namespace JiDB
     // num_pages만큼 페이지를 새로 만들고, 만들어진 페이지들을 free page list에 삽입한다.
     // 실제로 만들어진 페이지의 수를 리턴한다.
     inline int DiskMgr::expand(int num_pages) {
-        // TODO: aㄴㅇㄹ
+        int ret = lseek(fd, num_pages * PAGE_SZ, SEEK_END);
+        if (ret < 0) return 0;
+        int expanded_sz = ret - header.num_pages * PAGE_SZ;
+        int expanded_pg =  expanded_sz / PAGE_SZ;
+        header.num_pages += expanded_pg;
+        num_free_pages++;
+        return expanded_pg;
     }
 
 }
