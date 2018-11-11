@@ -93,14 +93,14 @@ namespace JiDB
         Node * root;
 
         Node * get_node(pageid_t id) const;
-        inline void page_to_node(page_t & page, Node & node) const;
-        Leaf &      page_to_leaf(page_t & page) const;
-        Internal &  page_to_internal(page_t & page) const;
+        inline void page_to_node(const page_t & page, Node & node) const;
+        Leaf &      page_to_leaf(const page_t & page) const;
+        Internal &  page_to_internal(const page_t & page) const;
 
-        void   write_node(Node & node) const;
-        inline void node_to_page(Node & node, page_t & page) const;
-        page_t &    leaf_to_page(const Leaf & node) const;
-        page_t &    internal_to_page(const Internal & node) const;
+        void   write_node(const Node & node) const;
+        inline void node_to_page(const Node & node, page_t & page) const;
+        page_t &    leaf_to_page(const Leaf & leaf) const;
+        page_t &    internal_to_page(const Internal & internal) const;
 
         pageid_t find_child(const Internal & page, const key_t & key);
         inline int find_lower_bound_in_leaf(const Leaf & page, const key_t & key);
