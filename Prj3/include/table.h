@@ -36,7 +36,7 @@ namespace JiDB
         virtual ~DiskMgr();
 
         // Push/Pop page at free page list.
-        page_t * alloc(void);
+        page_t & alloc(void);
         void     free (page_t page);
         
         // Read/Write page on disk.

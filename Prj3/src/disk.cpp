@@ -34,34 +34,34 @@ namespace JiDB
     }
 
     // Allocate new page from free page list.
-    page_t * DiskMgr::alloc() {
+    page_t & DiskMgr::alloc() {
         // If no page left, expand database file.
         if (!header->free_off) {
             expand(50);
         }
 
-        page_t *   new_page = new page_t;
-        FreePage & free_new_page = *reinterpret_cast<FreePage *>(new_page);
-        read(get_pageid(header->free_off), *new_page);
+        page_t & new_page = *new page_t;
+        FreePage & free_new_page = *reinterpret_cast<FreePage *>(&new_page.raw);
+        read(get_pageid(header->free_off), new_page);
         header->free_off = free_new_page.next_off;
-        memset(&new_page->raw, 0, sizeof(new_page->raw));
+        memset(new_page.raw, 0, sizeof(new_page.raw));
         
         return new_page;
     }
 
     // Make this page free page.
-    void DiskMgr::free(page_t page) {
-        FreePage & free_page = *reinterpret_cast<FreePage *>(&page);
+    void DiskMgr::free(page_t & page) {
+        FreePage & free_page = *reinterpret_cast<FreePage *>(&page.raw);
         free_page.next_off = header->free_off;
         header->free_off = get_offset(page.id);
     }
 
     // Read page which is at given offset. 
     // If success, return 0. Otherwise, return -1.
-    int DiskMgr::read(pageid_t id, page_t & dest) {
+    int DiskMgr::read(pageid_t id, page_t & dest) const {
         off_t off = get_offset(id);
         if ((lseek(fd, off, SEEK_SET) < 0) ||
-            (::read(fd, &dest.raw, PAGE_SZ) != PAGE_SZ)) {
+            (::read(fd, dest.raw, PAGE_SZ) != PAGE_SZ)) {
             return -1;
         }
         dest.id = id;
@@ -93,13 +93,7 @@ namespace JiDB
     // If there is no data page, return -1.
     // Else return 0.
     int DiskMgr::get_data_page(page_t & dest) {
-        if ((!header->data_off) ||
-            (lseek(fd, (off_t)header->data_off, SEEK_SET) < 0) ||
-            (::read(fd, &dest.raw, PAGE_SZ) != PAGE_SZ)) {
-            return -1;
-        }
-        dest.id = get_pageid(header->data_off);
-        return 0;
+        return read(get_pageid(header->data_off), dest);
     }
 
     // num_pages만큼 페이지를 새로 만들고, 만들어진 페이지들을 free page list에 삽입한다.

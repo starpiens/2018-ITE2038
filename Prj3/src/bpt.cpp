@@ -205,24 +205,25 @@ namespace JiDB {
         return nullptr;
     }
 
+    // TODO: 이 함수를 Node의 멤버함수로.
     BPT::KeyPtr * BPT::insert_into_leaf(Leaf & page, const key_t & key, const value_t & value) {
-        int idx = find_lower_bound_in_leaf(page, key);
-        if (page.records[idx].key == key) {     // Key duplication
+        int key_idx = find_lower_bound_in_leaf(page, key);
+        if (page.records[key_idx].key == key) {     // Key duplication
             return nullptr;
         }
 
         if (page.num_of_keys == ORDER_LEAF) {   // Leaf is full, split.
-            Leaf & new_leaf = *reinterpret_cast<Leaf *>(disk_mgr->alloc());
+            Leaf & new_leaf = page_to_leaf(disk_mgr->alloc());
             int split_idx = ORDER_LEAF >> 1;
-            int is_right = idx >= split_idx;
+            int is_right = key_idx >= split_idx;
             
 
         } else {
             // Shift elements.
-            std::for_each(page.records + idx, page.records + page.num_of_keys, 
+            std::for_each(page.records + key_idx, page.records + page.num_of_keys, 
                 [](Record & record) -> void { memcpy(&record + 1, &record, sizeof(record)); });
-            page.records[idx].key   = key;
-            page.records[idx].value = value;
+            page.records[key_idx].key   = key;
+            page.records[key_idx].value = value;
             return nullptr;
         }
     }
