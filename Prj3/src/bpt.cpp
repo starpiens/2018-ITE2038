@@ -1,6 +1,8 @@
 #include "table.h"
 #include "bpt.h"
 
+#include <algorithm>
+
 using namespace JiDB;
 
 namespace JiDB {
@@ -68,12 +70,12 @@ namespace JiDB {
     }
 
     // Write this page to disk.
-    void BPT::Leaf::write(const DiskMgr & disk_mgr, pageid_t id) {
+    void BPT::Leaf::write(const DiskMgr & disk_mgr) {
         RAW_Leaf_Page raw_leaf(disk_mgr, *this);
         disk_mgr.write(*reinterpret_cast<page_t *>(&raw_leaf));
     }
 
-    void BPT::Internal::write(const DiskMgr & disk_mgr, pageid_t id) {
+    void BPT::Internal::write(const DiskMgr & disk_mgr) {
         RAW_Internal_Page raw_internal(disk_mgr, *this);
         disk_mgr.write(*reinterpret_cast<page_t *>(&raw_internal));
     }
@@ -98,9 +100,9 @@ namespace JiDB {
         }
 
         Leaf & leaf = *static_cast<Leaf *>(ptr_node);
-        int idx = find_in_leaf(leaf, key);
+        int idx = find_lower_bound_in_leaf(leaf, key);
         value_t * ret = nullptr;
-        if (idx >= 0) {
+        if (idx != leaf.num_of_keys && leaf.records[idx].key == key) {
             ret = new value_t;
             memcpy(ret, &leaf.records[idx].value, sizeof(value_t));
         }
@@ -110,38 +112,29 @@ namespace JiDB {
     }
 
     // Find child which may contain key in internal node.
-    pageid_t BPT::find_child(const Internal & page, const key_t key) {
+    pageid_t BPT::find_child(const Internal & page, const key_t & key) {
         int idx = find_lower_bound_in_internal(page, key);
         return (idx < 0) ? page.leftmost_page : page.key_ptr_pairs[idx].nxt_page;
     }
 
-    /* Find index of key in leaf_page.
-     * If found, return index of the key. Otherwise, return -1.
+    /* Find a lower bound of key in the leaf page.
+     * Returns an index of the first record in the leaf page which does not compare less than key.
+     * If all keys in the leaf page compare less than key, the function returns last index (page.num_of_keys).
      */
-    int BPT::find_in_leaf(const Leaf & page, const key_t key) {
-        // [left, right)
-        uint left = 0, right = page.num_of_keys;
-        while (left < right) {
-            const uint mid = (left + right) >> 1;
-            const key_t & mid_key = page.records[mid].key;
-            if (key == mid_key) return mid;
-            if (key < mid_key) right = mid - 1;
-            else               left  = mid + 1;
-        }
-        return -1;
+    inline int BPT::find_lower_bound_in_leaf(const Leaf & page, const key_t & key) {
+        const Record * ptr = std::lower_bound(page.records, page.records + page.num_of_keys, key,
+            [](const Record & lhs, const key_t & rhs) -> bool { return lhs.key < rhs; });
+        return ptr - page.records;
     }
 
-    int BPT::find_lower_bound_in_internal(const Internal & page, const key_t key) {
-        // [left, right)
-        uint left = 0, right = page.num_of_keys;
-        while (left < right) {
-            const uint mid = (left + right + 1) >> 1;
-            const key_t & mid_key = page.key_ptr_pairs[mid].key;
-            if (key == mid_key) return mid;
-            if (key < mid_key) right = mid;
-            else               left  = mid + 1;
-        }
-        return left;
+    /* Find a lower bound of key in the internal page.
+     * Returns an index of the first record in the internal page which does not compare less than key.
+     * If all keys in the internal page compare less than key, the function returns last index (page.num_of_keys).
+     */
+    inline int BPT::find_lower_bound_in_internal(const Internal & page, const key_t & key) {
+        const KeyPtr * ptr = std::lower_bound(page.key_ptr_pairs, page.key_ptr_pairs + page.num_of_keys, key,
+            [](const KeyPtr & lhs, const key_t & rhs) -> bool { return lhs.key < rhs; });
+        return ptr - page.key_ptr_pairs;
     }
 
     int BPT::_insert(const key_t & key, const value_t & value) {
@@ -182,8 +175,27 @@ namespace JiDB {
         return nullptr;
     }
 
-    BPT::KeyPtr * BPT::insert_into_leaf(Leaf & leaf, const key_t key, const value_t value) {
+    BPT::KeyPtr * BPT::insert_into_leaf(Leaf & page, const key_t & key, const value_t & value) {
+        int idx = find_lower_bound_in_leaf(page, key);
+        if (page.records[idx].key == key) {     // Key duplication
+            return nullptr;
+        }
 
+        if (page.num_of_keys == ORDER_LEAF) {   // Leaf is full, split.
+            Leaf & new_leaf = *reinterpret_cast<Leaf *>(disk_mgr->alloc());
+            int split_idx = ORDER_LEAF >> 1;
+            int is_right = idx >= split_idx;
+            
+
+        } else {
+            // Shift elements.
+            std::for_each(page.records + idx, page.records + page.num_of_keys, 
+                [](Record & record) -> void { memcpy(&record + 1, &record, sizeof(record)); });
+            page.records[idx].key   = key;
+            page.records[idx].value = value;
+            page.write(disk_mgr, )
+            return nullptr;
+        }
     }
 
     int BPT::_delete(const key_t & key) {

@@ -91,7 +91,9 @@ namespace JiDB
             Leaf(const DiskMgr & disk_mgr, const page_t & page, pageid_t id);
             ~Leaf() = default;
 
-            void write(const DiskMgr & disk_mgr, pageid_t id);
+            struct Full {};
+            void insert();
+            void write(const DiskMgr & disk_mgr);
 
             pageid_t right_sibling;
             Record   records[ORDER_LEAF];
@@ -101,7 +103,7 @@ namespace JiDB
             Internal(const DiskMgr & disk_mgr, const page_t & page, pageid_t id);
             ~Internal() = default;
 
-            void write(const DiskMgr & disk_mgr, pageid_t id);
+            void write(const DiskMgr & disk_mgr);
 
             pageid_t leftmost_page;
             KeyPtr key_ptr_pairs[ORDER_INTERNAL];
@@ -113,12 +115,10 @@ namespace JiDB
 
         Node * get_node(pageid_t id) const;
         void free_node(Node & node);
-        Leaf * alloc_leaf();
-        Internal * alloc_internal();
 
-        pageid_t find_child(const Internal & page, const key_t key);
-        int find_in_leaf(const Leaf & page, const key_t key);
-        int find_lower_bound_in_internal(const Internal & page, const key_t key);
+        pageid_t find_child(const Internal & page, const key_t & key);
+        inline int find_lower_bound_in_leaf(const Leaf & page, const key_t & key);
+        inline int find_lower_bound_in_internal(const Internal & page, const key_t & key);
 
         KeyPtr * insert_into_internal(Internal & page, const key_t & key, const value_t & value);
         KeyPtr * insert_into_leaf(Leaf & page, const key_t & key, const value_t & value);
