@@ -45,8 +45,6 @@ namespace JiDB
         };
 
         struct RAW_BPT_Page {
-            RAW_BPT_Page(const DiskMgr & disk_mgr, const Node & node);
-
             uint64_t parent;
             int      is_leaf;
             int      num_of_keys;
@@ -56,8 +54,6 @@ namespace JiDB
         };
     
         struct RAW_Leaf_Page : public RAW_BPT_Page {
-            RAW_Leaf_Page(const DiskMgr & disk_mgr, const Leaf & leaf);
-
             uint64_t right_sibling;
             struct RAW_Record {
                 int64_t key;
@@ -66,9 +62,7 @@ namespace JiDB
         };
 
         struct RAW_Internal_Page : public RAW_BPT_Page {
-            RAW_Internal_Page(const DiskMgr & disk_mgr, const Internal & internal);
-
-            int64_t leftmost_page;
+            uint64_t leftmost_page;
             struct KeyOffPair {
                 key_t    key;
                 uint64_t nxt_page;
@@ -78,33 +72,18 @@ namespace JiDB
         struct Node {
             virtual ~Node() = 0;
 
+            pageid_t id;
             pageid_t parent;
             int      is_leaf;
             int      num_of_keys;
-        
-        protected:
-            Node(const DiskMgr & disk_mgr, const page_t & page, pageid_t id);
-            pageid_t id;
         };
 
         struct Leaf : public Node {
-            Leaf(const DiskMgr & disk_mgr, const page_t & page, pageid_t id);
-            ~Leaf() = default;
-
-            struct Full {};
-            void insert();
-            void write(const DiskMgr & disk_mgr);
-
             pageid_t right_sibling;
             Record   records[ORDER_LEAF];
         };
 
         struct Internal : public Node {
-            Internal(const DiskMgr & disk_mgr, const page_t & page, pageid_t id);
-            ~Internal() = default;
-
-            void write(const DiskMgr & disk_mgr);
-
             pageid_t leftmost_page;
             KeyPtr key_ptr_pairs[ORDER_INTERNAL];
         };
@@ -114,7 +93,14 @@ namespace JiDB
         Node * root;
 
         Node * get_node(pageid_t id) const;
-        void free_node(Node & node);
+        inline void page_to_node(page_t & page, Node & node) const;
+        Leaf &      page_to_leaf(page_t & page) const;
+        Internal &  page_to_internal(page_t & page) const;
+
+        void   write_node(Node & node) const;
+        inline void node_to_page(Node & node, page_t & page) const;
+        page_t &    leaf_to_page(const Leaf & node) const;
+        page_t &    internal_to_page(const Internal & node) const;
 
         pageid_t find_child(const Internal & page, const key_t & key);
         inline int find_lower_bound_in_leaf(const Leaf & page, const key_t & key);

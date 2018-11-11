@@ -14,73 +14,103 @@ namespace JiDB {
     // id를 가지고 노드를 읽어 온다! 
     // 리턴값은 Leaf 또는 Internal 객체다. is_leaf를 확인하여 적절히 캐스팅하여 사용해야 한다.
     BPT::Node * BPT::get_node(pageid_t id) const {
-        // Read page from disk manager.
         page_t page;
-        disk_mgr->read(id, page);
-        RAW_BPT_Page & header = *reinterpret_cast<RAW_BPT_Page *>(&page);
-        Node * node = header.is_leaf ? 
-                      (static_cast<Node *>(new Leaf(*disk_mgr, page, id))) :
-                      (static_cast<Node *>(new Internal(*disk_mgr, page, id)));
-        return node;
+        if (disk_mgr->read(id, page) < 0) {
+            return nullptr;
+        }
+        RAW_BPT_Page & header = *reinterpret_cast<RAW_BPT_Page *>(page.raw);
+        return header.is_leaf ?
+            static_cast<Node *>(&page_to_leaf(page)) :
+            static_cast<Node *>(&page_to_internal(page));
     }
 
-    // Node를 RAW_BPT_Page 형태로 표현한 객체를 생성한다.
-    BPT::RAW_BPT_Page::RAW_BPT_Page(const DiskMgr & disk_mgr, const Node & node) {
-        parent      = (uint64_t)disk_mgr.get_offset(node.parent);
-        is_leaf     = node.is_leaf;
-        num_of_keys = node.num_of_keys;
+    // page_t -> Node
+    inline void BPT::page_to_node(const page_t & page, Node & node) const {
+        node.id = page.id;
+        const RAW_BPT_Page & raw_page = *reinterpret_cast<const RAW_BPT_Page *>(page.raw);
+        node.parent      = disk_mgr->get_pageid(raw_page.parent);
+        node.is_leaf     = raw_page.is_leaf;
+        node.num_of_keys = raw_page.num_of_keys;
     }
 
-    BPT::RAW_Leaf_Page::RAW_Leaf_Page(const DiskMgr & disk_mgr, const Leaf & leaf) :
-            RAW_BPT_Page(disk_mgr, *static_cast<const Node *>(&leaf)) {
-        right_sibling = (uint64_t)disk_mgr.get_offset(leaf.right_sibling);
-        memcpy(records, leaf.records, sizeof(records));
+    // page_t -> Leaf
+    BPT::Leaf & BPT::page_to_leaf(const page_t & page) const {
+        Leaf & leaf = *new Leaf;
+        page_to_node(page, *static_cast<Node *>(&leaf));
+        const RAW_Leaf_Page & raw_page = *reinterpret_cast<const RAW_Leaf_Page *>(page.raw);
+        leaf.right_sibling = disk_mgr->get_pageid(raw_page.right_sibling);
+        memcpy(leaf.records, raw_page.records, sizeof(raw_page.records));
+        return leaf;
     }
 
-    BPT::RAW_Internal_Page::RAW_Internal_Page(const DiskMgr & disk_mgr, const Internal & internal) :
-            RAW_BPT_Page(disk_mgr, *static_cast<const Node*>(&internal)) {
-        leftmost_page = (off_t)disk_mgr.get_offset(internal.leftmost_page);
-        for (int i = 0; i < 248; i++) {
-            key_off_pairs[i].key      = internal.key_ptr_pairs[i].key;
-            key_off_pairs[i].nxt_page = disk_mgr.get_offset(internal.key_ptr_pairs[i].nxt_page);
+    // page_t -> Internal
+    BPT::Internal & BPT::page_to_internal(const page_t & page) const {
+        Internal & internal = *new Internal;
+        page_to_node(page, *static_cast<Node *>(&internal));
+        const RAW_Internal_Page & raw_page = *reinterpret_cast<const RAW_Internal_Page *>(page.raw);
+        internal.leftmost_page = disk_mgr->get_pageid(raw_page.leftmost_page);
+        for (int i = 0; i < raw_page.num_of_keys; i++) {
+            internal.key_ptr_pairs[i].key      = raw_page.key_off_pairs[i].key;
+            internal.key_ptr_pairs[i].nxt_page = disk_mgr->get_pageid(raw_page.key_off_pairs[i].nxt_page);
+        }
+        return internal;
+    }
+
+    // Write node to disk.
+    void BPT::write_node(const Node & node) const {
+        page_t & page = node.is_leaf ?
+            leaf_to_page(*static_cast<const Leaf *>(&node)) :
+            internal_to_page(*static_cast<const Internal *>(&node));
+        disk_mgr->write(page);
+    }
+
+    // Node -> page_t
+    inline void BPT::node_to_page(const Node & node, page_t & page) const {
+        page.id = node.id;
+        RAW_BPT_Page & raw_page = *reinterpret_cast<RAW_BPT_Page *>(page.raw);
+        raw_page.parent      = (uint64_t)disk_mgr->get_offset(node.parent);
+        raw_page.is_leaf     = node.is_leaf;
+        raw_page.num_of_keys = node.num_of_keys;
+    }
+
+    // Leaf -> page_t
+    page_t & BPT::leaf_to_page(const Leaf & leaf) const {
+        page_t & page = *new page_t;
+        node_to_page(*static_cast<const Node *>(&leaf), page);
+        RAW_Leaf_Page & raw_page = *reinterpret_cast<RAW_Leaf_Page *>(page.raw);
+        raw_page.right_sibling = disk_mgr->get_offset(leaf.right_sibling);
+        memcpy(raw_page.records, leaf.records, sizeof(leaf.records));
+        return page;
+    }
+
+    page_t & BPT::internal_to_page(const Internal & internal) const {
+        page_t & page = *new page_t;
+        node_to_page(*static_cast<const Node *>(&internal), page);
+        RAW_Internal_Page & raw_page = *reinterpret_cast<RAW_Internal_Page *>(page.raw);
+        raw_page.leftmost_page = disk_mgr->get_offset(internal.leftmost_page);
+        for (int i = 0; i < internal.num_of_keys; i++) {
+            raw_page.key_off_pairs[i].key      = internal.key_ptr_pairs[i].key;
+            raw_page.key_off_pairs[i].nxt_page = disk_mgr->get_offset(raw_page.key_off_pairs[i].nxt_page);
         }
     }
 
-    // 이미 있는 page를 Node 형태로 표현한 객체를 생성한다.
-    BPT::Node::Node(const DiskMgr & disk_mgr, const page_t & page, pageid_t id) : id(id) {
-        const RAW_BPT_Page & raw_page = *reinterpret_cast<const RAW_BPT_Page *>(&page);
-        parent      = disk_mgr.get_pageid((off_t)raw_page.parent);
-        is_leaf     = raw_page.is_leaf;
-        num_of_keys = raw_page.num_of_keys;
-    }
-
-    BPT::Leaf::Leaf(const DiskMgr & disk_mgr, const page_t & page, pageid_t id) : Node(disk_mgr, page, id) {
-        const RAW_Leaf_Page & raw_leaf = *reinterpret_cast<const RAW_Leaf_Page *>(&page);
-        right_sibling = disk_mgr.get_pageid((off_t)raw_leaf.right_sibling);
-        memcpy(records, raw_leaf.records, sizeof(records));
-    }
-
-    BPT::Internal::Internal(const DiskMgr & disk_mgr, const page_t & page, pageid_t id) : Node(disk_mgr, page, id) {
-        const RAW_Internal_Page & raw_internal = *reinterpret_cast<const RAW_Internal_Page *>(&page);
-        leftmost_page = disk_mgr.get_pageid((off_t)raw_internal.leftmost_page);
-        for (int i = 0; i < 248; i++) {
-            key_ptr_pairs[i].key      = raw_internal.key_off_pairs[i].key;
-            key_ptr_pairs[i].nxt_page = disk_mgr.get_pageid(raw_internal.key_off_pairs[i].nxt_page);
+    // Internal -> page_t
+    page_t & BPT::internal_to_page(const Internal & node) const {
+        page_t & page = *new page_t;
+        page.id = node.id;
+        RAW_Internal_Page & internal_raw = *reinterpret_cast<RAW_Internal_Page *>(page.raw);
+        internal_raw.parent        = (uint64_t)disk_mgr->get_offset(node.parent);
+        internal_raw.is_leaf       = node.is_leaf;
+        internal_raw.num_of_keys   = node.num_of_keys;
+        internal_raw.leftmost_page = (uint64_t)disk_mgr->get_offset(node.leftmost_page);
+        for (int i = 0; i < ORDER_INTERNAL; i++) {
+            internal_raw.key_off_pairs[i].key      = node.key_ptr_pairs[i].key;
+            internal_raw.key_off_pairs[i].nxt_page = disk_mgr->get_offset(
+                node.key_ptr_pairs[i].nxt_page
+            );
         }
+        return page;
     }
-
-    // Write this page to disk.
-    void BPT::Leaf::write(const DiskMgr & disk_mgr) {
-        RAW_Leaf_Page raw_leaf(disk_mgr, *this);
-        disk_mgr.write(*reinterpret_cast<page_t *>(&raw_leaf));
-    }
-
-    void BPT::Internal::write(const DiskMgr & disk_mgr) {
-        RAW_Internal_Page raw_internal(disk_mgr, *this);
-        disk_mgr.write(*reinterpret_cast<page_t *>(&raw_internal));
-    }
-
-
 
     /******************************************/
     /************ B+ TREE FUNCTIONS ***********/
@@ -193,7 +223,6 @@ namespace JiDB {
                 [](Record & record) -> void { memcpy(&record + 1, &record, sizeof(record)); });
             page.records[idx].key   = key;
             page.records[idx].value = value;
-            page.write(disk_mgr, )
             return nullptr;
         }
     }

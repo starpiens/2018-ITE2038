@@ -44,7 +44,7 @@ namespace JiDB
         FreePage & free_new_page = *reinterpret_cast<FreePage *>(new_page);
         read(get_pageid(header->free_off), *new_page);
         header->free_off = free_new_page.next_off;
-        memset(&new_page->raw, 0, PAGE_SZ);
+        memset(&new_page->raw, 0, sizeof(new_page->raw));
         
         return new_page;
     }
