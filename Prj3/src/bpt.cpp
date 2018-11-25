@@ -83,6 +83,7 @@ namespace JiDB {
         return page;
     }
 
+    // Internal -> page_t
     page_t & BPT::internal_to_page(const Internal & internal) const {
         page_t & page = *new page_t;
         node_to_page(*static_cast<const Node *>(&internal), page);
@@ -91,23 +92,6 @@ namespace JiDB {
         for (int i = 0; i < internal.num_of_keys; i++) {
             raw_page.key_off_pairs[i].key      = internal.key_ptr_pairs[i].key;
             raw_page.key_off_pairs[i].nxt_page = disk_mgr->get_offset(raw_page.key_off_pairs[i].nxt_page);
-        }
-    }
-
-    // Internal -> page_t
-    page_t & BPT::internal_to_page(const Internal & node) const {
-        page_t & page = *new page_t;
-        page.id = node.id;
-        RAW_Internal_Page & internal_raw = *reinterpret_cast<RAW_Internal_Page *>(page.raw);
-        internal_raw.parent        = (uint64_t)disk_mgr->get_offset(node.parent);
-        internal_raw.is_leaf       = node.is_leaf;
-        internal_raw.num_of_keys   = node.num_of_keys;
-        internal_raw.leftmost_page = (uint64_t)disk_mgr->get_offset(node.leftmost_page);
-        for (int i = 0; i < ORDER_INTERNAL; i++) {
-            internal_raw.key_off_pairs[i].key      = node.key_ptr_pairs[i].key;
-            internal_raw.key_off_pairs[i].nxt_page = disk_mgr->get_offset(
-                node.key_ptr_pairs[i].nxt_page
-            );
         }
         return page;
     }
@@ -206,24 +190,28 @@ namespace JiDB {
     }
 
     // TODO: 이 함수를 Node의 멤버함수로.
-    BPT::KeyPtr * BPT::insert_into_leaf(Leaf & page, const key_t & key, const value_t & value) {
-        int key_idx = find_lower_bound_in_leaf(page, key);
-        if (page.records[key_idx].key == key) {     // Key duplication
+    BPT::KeyPtr * BPT::insert_into_leaf(Leaf & leaf, const key_t & key, const value_t & value) {
+        int key_idx = find_lower_bound_in_leaf(leaf, key);
+        if (leaf.records[key_idx].key == key) {     // Key duplication
             return nullptr;
         }
 
-        if (page.num_of_keys == ORDER_LEAF) {   // Leaf is full, split.
-            Leaf & new_leaf = page_to_leaf(disk_mgr->alloc());
+        if (leaf.num_of_keys == ORDER_LEAF) {   // Leaf is full, split.
             int split_idx = ORDER_LEAF >> 1;
             int is_right = key_idx >= split_idx;
-            
+
+            // Split.
+            Leaf & new_leaf = page_to_leaf(disk_mgr->alloc());
+            new_leaf.right_sibling = leaf.right_sibling;
+            leaf.right_sibling = new_leaf.id;
+            memcpy(new_leaf.)
 
         } else {
             // Shift elements.
-            std::for_each(page.records + key_idx, page.records + page.num_of_keys, 
+            std::for_each(leaf.records + key_idx, leaf.records + leaf.num_of_keys, 
                 [](Record & record) -> void { memcpy(&record + 1, &record, sizeof(record)); });
-            page.records[key_idx].key   = key;
-            page.records[key_idx].value = value;
+            leaf.records[key_idx].key   = key;
+            leaf.records[key_idx].value = value;
             return nullptr;
         }
     }
