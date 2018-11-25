@@ -76,11 +76,9 @@ namespace JiDB
             pageid_t parent;
             int      is_leaf;
             int      num_of_keys;
-            
         };
 
         struct Leaf : public Node {
-            void insert();
             pageid_t right_sibling;
             Record   records[ORDER_LEAF];
         };
