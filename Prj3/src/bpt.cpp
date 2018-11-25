@@ -14,7 +14,7 @@ namespace JiDB {
     // id를 가지고 노드를 읽어 온다! 
     // 리턴값은 Leaf 또는 Internal 객체다. is_leaf를 확인하여 적절히 캐스팅하여 사용해야 한다.
     BPT::Node * BPT::get_node(pageid_t id) const {
-        page_t page;
+        page_t page; 
         if (disk_mgr->read(id, page) < 0) {
             return nullptr;
         }

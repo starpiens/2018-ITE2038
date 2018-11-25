@@ -37,10 +37,10 @@ namespace JiDB
 
         // Push/Pop page at free page list.
         page_t & alloc(void);
-        void     free (page_t page);
+        void     free (page_t & page);
         
         // Read/Write page on disk.
-        int read (pageid_t id, page_t & dest);
+        int read (pageid_t id, page_t & dest) const;
         int write(const page_t & src) const;
         
         pageid_t get_pageid(off_t off) const;
