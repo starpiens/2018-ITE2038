@@ -1,13 +1,21 @@
 #pragma once
 
 #include "api.h"
+#include "disk_mgr.h"
 #include <inttypes.h>
 
-const int PAGE_SZ = 0x1000;
+//==============================================================
+// CONSTANTS
+const int PAGE_DATA_SZ = 0x1000;
 
+//==============================================================
+// TYPES
 using pageid_t = uint64_t;
-using page_t   = struct {
-    tableid_t table_id;
-    pageid_t  page_id;
-    char      data[PAGE_SZ];
+struct page_t {
+    page_t(const tableid_t table_id, const pageid_t page_id) :
+        table_id(table_id), page_id(page_id) {}
+    const tableid_t table_id;
+    const pageid_t  page_id;
+    bool            is_dirty = 0;
+    char            data[PAGE_DATA_SZ];     // For syncing with disk.
 };

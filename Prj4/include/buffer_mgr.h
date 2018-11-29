@@ -4,8 +4,6 @@
 
 namespace BufferMgr {
 
-    struct BufferPage;
 
-    
 
 }

@@ -2,12 +2,14 @@
 
 #include <inttypes.h>
 
-
+//==============================================================
+// TYPES
 using key_t     = int64_t;
 using val_t     = int64_t;
 using tableid_t = int;
 
-
+//==============================================================
+// FUNCTION DECLARATIONS
 int     init_db    (int buf_num);
 int     shutdown_db(void);
 
