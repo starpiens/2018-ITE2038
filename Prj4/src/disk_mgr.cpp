@@ -69,10 +69,7 @@ page_t::page_t(const tableid_t table_id) {
     
     this->table_id = table_id;
     this->page_id  = target_table.free_pageid;
-
-    FreePage first_free_page(table_id, 0);
-    off_t next_free_page = first_free_page.get_next_offset();
-    g_tables[table_id].free_pageid = get_pageid(table_id, next_free_page);
+    target_table.advance_free_pageid();
 }
 
 // Constructor. Get page at (table_id, page_id).
@@ -106,11 +103,11 @@ struct Table {
     tableid_t    table_id;
     
     // Data from header page
-    char     data[PAGE_DATA_SZ];
-    pageid_t free_pageid;   // First free page
-    pageid_t data_pageid;   // First data page (root).
-    uint64_t num_pages;     // Number of pages
-    uint64_t num_cols;      // Number of columns
+    char       data[PAGE_DATA_SZ];
+    FreePage * free_page;     // First free page
+    pageid_t   data_pageid;   // First data page (root).
+    uint64_t   num_pages;     // Number of pages
+    uint64_t   num_cols;      // Number of columns
 };
 
 // Constructor. 
@@ -142,6 +139,14 @@ Table::~Table() {
 // Increment the number of pages.
 inline void Table::increment_num_pages() {
     num_pages++;
+}
+
+// Advance free page id.
+inline void Table::advance_free_pageid() {
+    
+    FreePage first_free_page(table_id, 0);
+    off_t next_free_page = first_free_page.get_next_offset();
+    free_pageid = get_pageid(table_id, next_free_page);
 }
 
 // Read header info.
@@ -183,6 +188,8 @@ struct FreePage : private page_t {
     FreePage(const tableid_t table_id, const pageid_t page_id);
 
     off_t get_next_offset();
+
+
 };
 
 // Constructor.
