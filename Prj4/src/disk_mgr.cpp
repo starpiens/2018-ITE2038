@@ -83,15 +83,17 @@ struct Table {
 // Free pages are linked and allocatoin is managed by the free page list.
 struct FreePage : public page_t {
     // Constructor
-    FreePage(const tableid_t table_id, int oflag);
-    enum { O_READ, O_MAKE };
+    FreePage(const tableid_t table_id, int flag);
+    enum { READ, MAKE };
 
     off_t get_next_offset();
 };
 
-// Constructor. Get first free page.
-FreePage::FreePage(const tableid_t table_id, int oflag) 
-: page_t(table_id, get_pageid(table_id, )) {
+// Constructor.
+// If flag is FreePage::READ, read first free page.
+// If flag is FreePage::MAKE, make a new free page.
+FreePage::FreePage(const tableid_t table_id, int flag) :
+page_t(table_id, get_pageid()) {
 
 }
 

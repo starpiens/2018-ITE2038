@@ -24,7 +24,7 @@ private:
     tableid_t table_id;
     pageid_t  page_id;
     bool      is_dirty = 0;
-    char      data[PAGE_DATA_SZ];     // For syncing with disk.
+    char      data[PAGE_DATA_SZ];     // For synchronization
 };
 
 pageid_t get_pageid(tableid_t table_id, off_t offset);
