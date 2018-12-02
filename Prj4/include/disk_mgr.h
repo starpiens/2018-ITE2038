@@ -18,9 +18,9 @@ struct page_t {
     page_t(const tableid_t table_id, const pageid_t page_id);
     ~page_t();
     
+    void write(void);    // Write this page on disk.
     void free(void);     // Add this page to free page list.
 
-private:
     tableid_t table_id;
     pageid_t  page_id;
     bool      is_dirty = 0;

@@ -14,7 +14,7 @@ using tableid_t = int;
 int     init_db    (int buf_num);
 int     shutdown_db(void);
 
-int     open_table (const char * pathname, int num_column);
+int     open_table (const char * pathname, int num_columns);
 int     close_table(tableid_t table_id);
 
 int     insert     (int table_id, key_t key, val_t * values);
